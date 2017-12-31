@@ -11,6 +11,8 @@ from zerver.lib.cache import get_stream_cache_key, cache_delete
 
 from zerver.lib.addressee import Addressee
 
+from zerver.lib.actions import check_send_message
+
 from zerver.lib.actions import (
     do_send_messages,
     get_active_presence_idle_user_ids,
@@ -2731,3 +2733,20 @@ class MessageHydrationTest(ZulipTestCase):
 
         self.assertIn('class="user-mention"', new_message['content'])
         self.assertEqual(new_message['flags'], ['mentioned'])
+
+class OctopusTest(ZulipTestCase):
+    def test_change_welcome_message(self) -> None:
+        sender = get_user('iago@zulip.com', get_realm('zulip'))
+        client = make_client(name="test suite")
+        message_id = check_send_message(sender, client, "stream", ["Verona"], "Zulip Octopus test", "welcome")
+        self.assertEqual(
+            Message.objects.values_list("content", flat=True).get(id=message_id),
+            "Welcome to Zulip :octopus:")
+
+    def test_leave_welcome_message_alone(self) -> None:
+        sender = get_user('iago@zulip.com', get_realm('zulip'))
+        client = make_client(name="test suite")
+        message_id = check_send_message(sender, client, "stream", ["Verona"], "Zulip Octopus test", "Welcome everyone!")
+        self.assertEqual(
+            Message.objects.values_list("content", flat=True).get(id=message_id),
+            "Welcome everyone!")
